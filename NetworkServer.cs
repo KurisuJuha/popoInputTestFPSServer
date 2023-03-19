@@ -2,21 +2,24 @@ using Fleck;
 
 namespace popoInputTestFPS.Server;
 
-public class GameServer
+public class NetworkServer
 {
-    public event Action OnOpen = () => { };
-    public event Action OnClose = () => { };
-    public event Action<byte[]> OnBinary = bytes => { };
+    public event Action<IWebSocketConnection> OnOpen = (s) => { };
+    public event Action<IWebSocketConnection> OnClose = (s) => { };
+    public event Action<IWebSocketConnection, byte[]> OnBinary = (s, bytes) => { };
     public readonly string url;
 
     private WebSocketServer webSocketServer;
     private Dictionary<Guid, IWebSocketConnection> connections = new();
 
-    public GameServer(string url)
+    public NetworkServer(string url)
     {
         this.url = url;
         webSocketServer = new(this.url);
+    }
 
+    public void Start()
+    {
         webSocketServer.Start(socket =>
         {
             socket.OnOpen += () =>
@@ -24,21 +27,21 @@ public class GameServer
                 Console.WriteLine($"OnOpen: {socket.ConnectionInfo.Id}");
                 connections[socket.ConnectionInfo.Id] = socket;
 
-                OnOpen.Invoke();
+                OnOpen.Invoke(socket);
             };
             socket.OnClose += () =>
             {
                 Console.WriteLine($"OnClose: {socket.ConnectionInfo.Id}");
                 connections.Remove(socket.ConnectionInfo.Id);
 
-                OnClose.Invoke();
+                OnClose.Invoke(socket);
             };
             socket.OnBinary += bytes =>
             {
                 Console.WriteLine($"OnBinary: {socket.ConnectionInfo.Id}");
                 connections[socket.ConnectionInfo.Id] = socket;
 
-                OnBinary.Invoke(bytes);
+                OnBinary.Invoke(socket, bytes);
             };
         });
     }
